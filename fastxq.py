@@ -22,6 +22,7 @@ class QInterpolation(object):
                  q_z_size: int,
                  y0: float,
                  z0: float,
+                 incidence_angle: float,
                  wavelength: float,
                  distance: float,
                  pixel_size: float,
@@ -36,6 +37,7 @@ class QInterpolation(object):
             wavelength=wavelength,
             distance=distance,
             pixel_size=pixel_size,
+            incidence_angle=incidence_angle,
             q_xy_max=q_xy_max,
             q_z_max=q_z_max,
             q_xy_size=q_xy_size,
@@ -80,6 +82,7 @@ class PolarInterpolation(QInterpolation):
                  polar_angular_size: int,
                  y0: float,
                  z0: float,
+                 incidence_angle: float,
                  wavelength: float,
                  distance: float,
                  pixel_size: float,
@@ -88,7 +91,7 @@ class PolarInterpolation(QInterpolation):
                  flip_z: bool = False,
                  ):
         super().__init__(
-            q_xy_max, q_z_max, polar_q_size, polar_angular_size, y0, z0, wavelength, distance,
+            q_xy_max, q_z_max, polar_q_size, polar_angular_size, y0, z0, incidence_angle, wavelength, distance,
             pixel_size, algorithm, flip_y, flip_z,
         )
 
@@ -113,6 +116,7 @@ def get_detector_q_grid(
         q_z_size: int,
         y0: float,
         z0: float,
+        incidence_angle: float,
         wavelength: float,
         distance: float,
         pixel_size: float,
@@ -124,6 +128,7 @@ def get_detector_q_grid(
         q_z=q_z,
         y0=y0,
         z0=z0,
+        incidence_angle=incidence_angle,
         wavelength=wavelength,
         distance=distance,
         pixel_size=pixel_size,
@@ -138,6 +143,7 @@ def get_detector_polar_grid(
         polar_angular_size: int,
         y0: float,
         z0: float,
+        incidence_angle: float,
         wavelength: float,
         distance: float,
         pixel_size: float,
@@ -149,6 +155,7 @@ def get_detector_polar_grid(
         q_z=q_z,
         y0=y0,
         z0=z0,
+        incidence_angle=incidence_angle,
         wavelength=wavelength,
         distance=distance,
         pixel_size=pixel_size,
@@ -161,25 +168,33 @@ def _get_detector_grid(
         q_z: np.ndarray,
         y0: float,
         z0: float,
+        incidence_angle: float,
         wavelength: float,
         distance: float,
         pixel_size: float,
 ):
     k = 2 * np.pi / wavelength
 
-    q_xy2, q_z2 = (q_xy / k) ** 2, (q_z / k) ** 2
+    d = distance / pixel_size
 
-    a = distance / pixel_size
+    q_xy, q_z = q_xy / k, q_z / k
 
-    yn = 1 - (q_xy2 - 1) / (1 - q_z2)
+    q2 = q_xy ** 2 + q_z ** 2
 
-    a2 = a ** 2
+    norm = d / (1 - q2 / 2)
 
-    yy2 = 4 * a2 / yn ** 2 / (1 - q_z2) - a2
+    alpha = np.pi / 180 * incidence_angle
 
-    zz2 = (a2 + yy2) * q_z2 / (1 - q_z2)
+    sin, cos = np.sin(alpha), np.cos(alpha)
 
-    yy, zz = np.sqrt(yy2) + y0, np.sqrt(zz2) + z0
+    zz = (norm * (q_z - sin) + d * sin) / cos
+
+    yy2 = norm ** 2 - zz ** 2 - d ** 2
+    yy2[yy2 < 0] = np.nan
+    yy = np.sqrt(yy2)
+
+    zz += z0
+    yy += y0
 
     return yy, zz
 

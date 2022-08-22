@@ -31,13 +31,6 @@ long_description = read_file('README.md')
 long_description_content_type = 'text/markdown'
 
 
-entry_points = {
-    'gui_scripts': [
-        'gixi_client = gixi:main',
-    ],
-}
-
-
 python_requires = '>=3.6'
 install_requires = read_file('requirements.txt').splitlines()
 
